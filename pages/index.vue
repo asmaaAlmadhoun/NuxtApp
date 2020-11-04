@@ -11,6 +11,8 @@
             </b-input-group-prepend>
             <b-form-input type="search" placeholder="Search for the country names"></b-form-input>
           </b-input-group>
+          <b-alert v-model="showDismissibleAlert" v-if="showDismissibleAlert!==''" variant="danger" dismissible></b-alert>
+
         </b-card-text>
         <b-card-body>
           <b-table
@@ -26,6 +28,7 @@
             :per-page="perPage"
             aria-controls="my-table"
             align="center"
+            @page-click="setNewData()"
             first-number
             last-number
           ></b-pagination>
@@ -45,7 +48,28 @@ export default Vue.extend({
 
   data() {
     return {
-      headers: ['index','Country_name', 'no_active_cases', 'no_deaths', 'no_recoveries', 'TOTALS'],
+      headers: [
+        {  key: 'index',
+          label: '#'
+        },
+        {  key: 'index',
+          label: '#'
+        },
+        {  key: 'Country_name',
+          label: 'Country_name'
+        },
+        {  key: 'no_active_cases',
+          label: 'no_active_cases'
+        },
+        {  key: 'no_deaths',
+          label: 'no_deaths'
+        },
+        {  key: 'no_recoveries',
+          label: 'no_recoveries'
+        },
+        {  key: 'TOTALS',
+          label: 'TOTALS'
+        }],
       ContryName: [],
       ActiveState: [],
       States: [],
@@ -56,24 +80,37 @@ export default Vue.extend({
       currentPage: 1,
       perPage: 9,
       pages: [],
+      showDismissibleAlert: '',
       currentDate : new Date().toISOString(),
-
     }
   },
   methods: {
     async getCountry() {
-      const result = await axios.get(this.$store.state.apiUrl+'/countries',this.config);
+      const result = await axios.get(this.$store.state.apiUrl + '/countries', this.config);
       this.ContryName = result.data.map((country: { Country: any; }) => ({
         name: country.Country,
       }));
-      for(let i = 0; i< this.perPage ;i++) {
+      for (let i=0; i < this.perPage; i++) {
         this.getCases(this.ContryName[i].name);
       }
-      setTimeout(()=> {this.fillTable()},1000)
-
+      this.fillTable();
+    },
+    async getCases2() {
+      let currentPage = this.currentPage;
+      let perPage = this.perPage;
+      let from = (currentPage * perPage) - perPage;
+      let to = (currentPage * perPage);
+      try {
+        for (from; from < to; from++) {
+          this.getCases(this.ContryName[from].name);
+        }
+        this.fillTable();
+      }
+      catch (e) {
+        this.showDismissibleAlert = e.message;
+      }
     },
     async getCases( countryName: string) {
-
       try {
         const result = await axios.get(this.$store.state.apiUrl+'/live/country/'+countryName+'/status/confirmed');
         this.ActiveState = result.data.map((state:any) => ({
@@ -91,32 +128,36 @@ export default Vue.extend({
         let ActiveNum = totalActive.reduce(function(total, num){ return total + num }, 0);
         let DeathsNum = totalDeaths.reduce(function(total, num){ return total + num }, 0);
         let RecoverdNum = totalRecoverd.reduce(function(total, num){ return total + num }, 0);
-        console.log(ActiveNum)
 
         let item = {
           active: ActiveNum,
-          seaths: DeathsNum,
+          deaths: DeathsNum,
           recovered: RecoverdNum,
         }
         this.States.push(item);
 
       } catch (err) {
-        console.log(err.message)
+        this.showDismissibleAlert = err.message;
       }
-
-
     },
     fillTable: function () {
-      for(let i = 0; i< this.perPage;i++){
-        let item = { index: 0,Country_name: '', no_active_cases: 'Dickerson', no_deaths: 'Macdonald',
-          no_recoveries: 'Macdonald', TOTALS: 30 };
-        item.index = i ;
-        item.Country_name = this.ContryName[i].name;
-        console.log(this.States)
-        item.no_active_cases = this.States[i].active;
-        item.no_deaths = this.States[i].seaths;
-        item.no_recoveries = this.States[i].recovered;
+      let currentPage = this.currentPage;
+      let perPage = this.perPage;
+      let from = (currentPage * perPage) - perPage;
+      let to = (currentPage * perPage);
 
+      for( from; from < to ; from++){
+        let item = { index: 0,Country_name: '', no_active_cases: 0, no_deaths: 0,
+          no_recoveries: 0, TOTALS: 0 };
+        item.index = from ;
+        console.log(from)
+
+        item.Country_name = this.ContryName[from].name;
+        // item.no_active_cases = this.States[from].active;
+        // item.no_deaths = this.States[from].deaths;
+        // item.no_recoveries = this.States[from].recovered;
+        //
+        // item.TOTALS = (item.no_active_cases + item.no_deaths + item.no_recoveries);
 
         this.items.push(item)
       }
@@ -124,19 +165,26 @@ export default Vue.extend({
       this.paginate(this.ContryName);
     },
     setPages () {
+      console.log('asmaa 111 111');
+
       let numberOfPages = Math.ceil(this.ContryName.length / this.perPage);
       for (let index = 1; index <= numberOfPages; index++) {
         this.pages.push(index);
       }
     },
     paginate (items: string | any[]) {
+      // this.fillTable();
       let currentPage = this.currentPage;
       let perPage = this.perPage;
       let from = (currentPage * perPage) - perPage;
       let to = (currentPage * perPage);
       return  items.slice(from, to);
-    }
+    },
+    setNewData: function(){
+     //  this.getCases2();
+    },
   },
+
   created () {
     this.getCountry();
   },

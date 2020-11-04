@@ -14,16 +14,19 @@
     "bootstrap": "^4.5.2",
     "bootstrap-vue": "^2.17.3",
     "core-js": "^3.6.5",
-    "nuxt": "^2.14.6"
+    "enhanced-resolve": "^5.3.1",
+    "nuxt": "^2.14.6",
+    "vue-bootstrap-typeahead": "^0.2.6",
+    "vuejs-auto-complete": "^0.9.0"
   },
   "devDependencies": {
     "@nuxt/types": "^2.14.6",
     "@nuxt/typescript-build": "^2.0.3",
-    "@vue/test-utils": "^1.1.0",
+    "@vue/test-utils": "^1.1.1",
     "axios": "^0.21.0",
     "babel-core": "7.0.0-bridge.0",
-    "babel-jest": "^26.5.0",
-    "jest": "^26.5.0",
+    "babel-jest": "^26.6.2",
+    "jest": "^26.6.2",
     "ts-jest": "^26.4.1",
     "vue-jest": "^3.0.4",
     "vuex": "^3.5.1"
