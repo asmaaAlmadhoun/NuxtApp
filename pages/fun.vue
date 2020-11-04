@@ -5,42 +5,40 @@
         Welcome at our application to track data about the COVID-19 virus.
       </b-card-text>
       <b-card-text>
-        <b-input-group size="md" class="mb-2">
-          <b-input-group-prepend is-text>
-            <i class="fa fa-search"></i>
-          </b-input-group-prepend>
-          <b-form-input type="search" v-model="search" v-on:change="filteredList()"  placeholder="Search for the country names"></b-form-input>
-        </b-input-group>
-
         <Autocomplete
-          ref="autocomplete"
-          placeholder="Search Distribution Groups"
-          :source="[{id:1,name:'abc'},{id:2,name:'def'}]"
+          placeholder="Search By Country Name"
+          :source="ContryNameForSearch"
           input-class="form-control"
-          results-property="data">
+          results-property="data"
+          @selected="SearchForCountryFunc"
+          @nothingSelected="ClearSearchData"
+        >
         </Autocomplete>
-
       </b-card-text>
       <b-card-body>
-        <div class="wrapper">
-          <div class="card" v-for="item in filteredList">
-            {{ item.name }}
-          </div>
-        </div>
-         <table id="units-table" class="table table-striped table-bordered table-hover">
+        <table id="units-table" class="table table-striped table-bordered table-hover">
             <thead>
             <tr>
               <th rowspan="2" width="5%">#</th>
-              <th rowspan="2" width="5%">country Name</th>
-              <th rowspan="2" width="5%">no active cases</th>
-              <th rowspan="2" width="5%">no deaths</th>
-              <th rowspan="2" width="5%">no recoveries</th>
+              <th rowspan="2" width="5%">Country Name</th>
+              <th rowspan="2" width="5%">no Active Cases</th>
+              <th rowspan="2" width="5%">no Deaths</th>
+              <th rowspan="2" width="5%">no Recoveries</th>
             </tr>
             </thead>
             <tbody>
-            <tr v-for="(item) in ContryName2[currPage-1]">
+            <tr v-for="(item,index) in ContryName2[currPage-1]">
               <td>{{ item.key }}</td>
               <td>{{ item.name }}</td>
+              <td>{{ States[index].active }}</td>
+              <td>{{ States[index].deaths }}</td>
+              <td>{{ States[index].recovered }}</td>
+            </tr>
+            <tr>
+              <td colspan="2">Total</td>
+              <td>2</td>
+              <td>3</td>
+              <td>1</td>
             </tr>
             </tbody>
           </table>
@@ -90,8 +88,6 @@
 
       </b-card-body>
     </b-card>
-
-
   </div>
 </template>
 
@@ -108,23 +104,49 @@
       return{
         search: '',
         ContryName: [],
+        ContryNameForSearch: [],
         totalPage: '1',
         currPage: '1',
         perPage: 7,
         list_of_pages : [],
         ContryName2 : [],
+        ActiveState: [],
+        States:[],
         config : {
           headers: {'Access-Control-Allow-Origin': '*'}
         },
       }
     },
     methods: {
+      SearchForCountryFunc (search) {
+        if(search === ''){
+          this.getCountry();
+        }
+        else {
+          this.search = search.display
+          let array1 = [[]]
+          this.ContryNameForSearch.map((mapItem) => {
+            if (mapItem.name === search.display) {
+              array1[0].push(mapItem);
+              this.ContryName2 =  array1
+              this.totalPage = 1
+            }
+          })
+        }
+      },
+      ClearSearchData: function(search){
+        console.log(search)
+        if(search === null){
+          this.getCountry();
+        }
+      },
       async getCountry() {
         const result = await axios.get(this.$store.state.apiUrl + '/countries', this.config);
         this.ContryName = result.data.map((country,key) => ({
           key: key,
           name: country.Country,
         }));
+        this.ContryNameForSearch = this.ContryName.slice(0);
 
         let n = this.perPage;
         let _this= this;
@@ -145,6 +167,13 @@
           arr.push(Number(_this.currPage) + 2);
         }
         _this.list_of_pages = arr;
+
+        for (let i=0; i < this.perPage; i++) {
+          let name = this.ContryName2[0][i].name
+          this.getCases(name);
+        }
+
+
       },
       setPage: function(idx){
         this.currPage = idx;
@@ -157,30 +186,45 @@
         }
         this.list_of_pages = arr;
       },
-      filteredList() {
-        let _this=this;
-        return this.ContryName2.filter(item => {
-          return item.name.toLowerCase().includes(_this.search.toLowerCase())
-        })
-      },
-    },
+      async getCases(countryName) {
+        try {
+          const result = await axios.get(this.$store.state.apiUrl+'/live/country/'+countryName+'/status/confirmed');
+          this.ActiveState = result.data.map((state) => ({
+            Active: state.Active,
+            Deaths: state.Deaths,
+            Recovered: state.Recovered,
+          }))
 
+          let totalActive = [];let totalDeaths = [];let totalRecoverd = [];
+          Object.entries(this.ActiveState).forEach(([key, val]) => {
+            totalActive.push(val.Active) // the value of the current key.
+            totalDeaths.push(val.Deaths) // the value of the current key.
+            totalRecoverd.push(val.Recovered) // the value of the current key.
+          });
+          let ActiveNum = totalActive.reduce(function(total, num){ return total + num }, 0);
+          let DeathsNum = totalDeaths.reduce(function(total, num){ return total + num }, 0);
+          let RecoverdNum = totalRecoverd.reduce(function(total, num){ return total + num }, 0);
+
+          let item = {
+            'active': ActiveNum,
+            'deaths': DeathsNum,
+            'recovered': RecoverdNum,
+          }
+          this.States.push(item);
+        }
+        catch (err) {
+          console.log(err.message);
+        }
+      },
+      generateTotal: function () {
+        totalActive.reduce(function(total, num){ return total + num }, 0);
+      }
+    },
     created () {
       this.getCountry();
     },
-    computed: {
 
-      filteredList1 (){
-        let _this=this;
-        if(this.search){
-          return _this.ContryName2.filter((item)=>{
-            return item.name.startsWith(_this.search);
-          })
-        }else{
-          return _this.ContryName2;
-        }
-      }
-    }
+
   })
 </script>
 
